@@ -1,0 +1,79 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 0;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 3rem;
+}
+
+.formRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.label {
+  width: 240px;
+  padding-top: 1rem;
+}
+
+
+.inputWrapper {
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  min-height: 60px;
+  padding: 1rem;
+  border: 1px solid #dbdbd1;
+  border-radius: 0.5rem;
+  box-sizing: border-box;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 220px;
+  padding: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.error {
+  font-size: 0.875rem;
+  color: #ec1010;
+  margin-top: 0.25rem;
+}
+
+.buttonArea {
+  display: flex;
+  justify-content: center;
+  margin-top: 2.5rem;
+}
+
+.submitButton {
+  background-color: #1f2937;
+  color: white;
+  font-weight: bold;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.5rem;
+  margin-right: 1rem;
+  border: none;
+  cursor: pointer;
+}
+
+.clearButton {
+  background-color: #e5e7eb;
+  font-weight: bold;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+}

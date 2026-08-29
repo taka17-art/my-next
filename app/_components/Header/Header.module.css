@@ -1,0 +1,26 @@
+.header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #0e0d0d; 
+  padding: 1rem 2rem;
+  box-sizing: border-box;
+}
+
+.headerLink {
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 1rem;
+  text-decoration: none;
+}
+
+
+.headerLink:visited {
+  color: #ffffff;
+}
+
+
+.headerLink:hover {
+  opacity: 0.8;
+}
