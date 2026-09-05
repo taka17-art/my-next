@@ -9,7 +9,7 @@ export const Header = () => {
         Blog
       </Link>
       <Link href="/contact" className={classes.headerLink}>
-        お問合せ
+        お問い合せ
       </Link>
     </header>
   );

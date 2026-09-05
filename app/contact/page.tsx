@@ -35,7 +35,7 @@ export default function Contact ()  {
 
   return (
     <div className={classes.container}>
-      <h1 className={classes.title}>問合わせフォーム</h1>
+      <h1 className={classes.title}>問い合わせフォーム</h1>
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className={classes.formRow}>
           <label htmlFor="name" className={classes.label}>
