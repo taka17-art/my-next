@@ -3,22 +3,27 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import classes from "@/app/posts/[id]/ArticleDetail.module.css";
-import type { Post } from "../../_types/types";
+import type { MicroCmsPost } from "../../_types/MicroCmsPost";
 import Image from "next/image";
 
 export default function Detail() {
   const { id } = useParams();
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<MicroCmsPost | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetcher = async () => {
       setLoading(true);
       const res = await fetch(
-        `https://1hmfpsvto6.execute-api.ap-northeast-1.amazonaws.com/dev/posts/${id}`,
+        `https://xsec48r4i5.microcms.io/api/v1/posts/${id}`,
+        {
+          headers: {
+            "X-MICROCMS-API-KEY": process.env.NEXT_PUBLIC_MICROCMS_API_KEY as string,
+          },
+        }
       );
-      const { post } = await res.json();
-      setPost(post);
+      const data = await res.json();
+      setPost(data);
       setLoading(false);
     };
 
@@ -35,19 +40,26 @@ export default function Detail() {
   return (
     <div className={classes.container}>
       <div className={classes.post}>
-        <div className={classes.postImage}>
-          <Image width={800} height={400} alt="" src={post.thumbnailUrl} />
-        </div>
+        {post.thumbnail && (
+          <div className={classes.postImage}>
+            <Image
+              width={post.thumbnail.width || 800}
+              height={post.thumbnail.height || 400}
+              alt={post.title}
+              src={post.thumbnail.url}
+            />
+          </div>
+        )}
         <div className={classes.postContent}>
           <div className={classes.postInfo}>
             <div className={classes.postDate}>
               {new Date(post.createdAt).toLocaleDateString()}
             </div>
             <div className={classes.postCategories}>
-              {post.categories.map((category, id) => {
+              {post.categories.map((category) => {
                 return (
-                  <p key={id} className={classes.postCategory}>
-                    {category}
+                  <p key={category.id} className={classes.postCategory}>
+                    {category.name}
                   </p>
                 );
               })}
@@ -58,8 +70,8 @@ export default function Detail() {
             className={classes.postBody}
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
-        </div> 
+        </div>
       </div>
     </div>
   );
-}  
+}
