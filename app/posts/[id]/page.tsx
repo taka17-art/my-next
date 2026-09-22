@@ -1,71 +1,59 @@
-"use client";
+'use client'
 
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import classes from "@/app/posts/[id]/ArticleDetail.module.css";
-import type { MicroCmsPost } from "../../_types/MicroCmsPost";
-import Image from "next/image";
+import { useEffect, useState } from 'react'
+import classes from '@/app/_styles/Detail.module.scss'
+import Image from 'next/image'
+import { useParams } from 'next/navigation'
+import { PostShowResponse } from '@/app/api/posts/[id]/route'
 
-export default function Detail() {
-  const { id } = useParams();
-  const [post, setPost] = useState<MicroCmsPost | null>(null);
-  const [loading, setLoading] = useState(false);
+export default function Page() {
+  // react-routerのuseParamsを使うと、URLのパラメータを取得できます。
+  const { id } = useParams()
+  const [post, setPost] = useState<PostShowResponse["post"] | null>(null)
+  const [loading, setLoading] = useState(true)
 
+  // APIでpostsを取得する処理をuseEffectで実行します。
   useEffect(() => {
     const fetcher = async () => {
-      setLoading(true);
       const res = await fetch(
-        `https://xsec48r4i5.microcms.io/api/v1/posts/${id}`,
-        {
-          headers: {
-            "X-MICROCMS-API-KEY": process.env.NEXT_PUBLIC_MICROCMS_API_KEY as string,
-          },
-        }
-      );
-      const data = await res.json();
-      setPost(data);
-      setLoading(false);
-    };
+        `/api/posts/${id}`,
+      )
+      const { post } = await res.json()
+      setPost(post)
+      setLoading(false)
+    }
 
-    fetcher();
-  }, [id]);
+    fetcher()
+  }, [id])
 
-  if (loading) return <div className={classes.postLoading}>読み込み中...</div>;
-  if (!post) {
-    return (
-      <div className={classes.postError}>記事が見つかりませんでした。</div>
-    );
-  }
+  // 記事取得中は、読み込み中であることを表示します。
+  if (loading) return <div>読み込み中...</div>
+
+  // 記事が見つからなかった場合は、記事が見つからないことを表示します。
+  if (!post) return <div>記事が見つかりません</div>
 
   return (
     <div className={classes.container}>
       <div className={classes.post}>
-        {post.thumbnail && (
-          <div className={classes.postImage}>
-            <Image
-              width={post.thumbnail.width || 800}
-              height={post.thumbnail.height || 400}
-              alt={post.title}
-              src={post.thumbnail.url}
-            />
-          </div>
-        )}
+        <div className={classes.postImage}>
+          <Image src={post.thumbnailUrl} alt="thumbnail" height={1000} width={1000} />
+        </div>
         <div className={classes.postContent}>
           <div className={classes.postInfo}>
             <div className={classes.postDate}>
               {new Date(post.createdAt).toLocaleDateString()}
             </div>
             <div className={classes.postCategories}>
-              {post.categories.map((category) => {
+              {post.postCategories.map((postCategory) => {
                 return (
-                  <p key={category.id} className={classes.postCategory}>
-                    {category.name}
-                  </p>
-                );
+                  <div key={postCategory.category.id} className={classes.postCategory}>
+                    {postCategory.category.name}
+                  </div>
+                )
               })}
             </div>
           </div>
-          <p className={classes.postTitle}>{post.title}</p>
+          <div className={classes.postTitle}>{post.title}</div>
           <div
             className={classes.postBody}
             dangerouslySetInnerHTML={{ __html: post.content }}
@@ -73,5 +61,5 @@ export default function Detail() {
         </div>
       </div>
     </div>
-  );
+  )
 }
