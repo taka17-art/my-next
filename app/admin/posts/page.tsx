@@ -3,27 +3,43 @@
 import { PostIndexResponse } from '@/app/api/admin/posts/route'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useSupabaseSession } from '@/app/_hooks/useSupabaseSession'
 
 export default function Page() {
   const [posts, setPosts] = useState<PostIndexResponse['posts']>([])
 
+  const { token } = useSupabaseSession()
+
   useEffect(() => {
+    if (!token) return
+
     const fetcher = async () => {
-      const res = await fetch('/api/admin/posts')
+      const res = await fetch('/api/admin/posts', {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!res.ok) return
+
       const { posts }: PostIndexResponse = await res.json()
-      setPosts(posts)
+      setPosts([...posts])
     }
 
     fetcher()
-  }, [])
+  }, [token])
 
   return (
     <div className="">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-xl font-bold">記事一覧</h1>
-        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-          <Link href="/admin/posts/new">新規作成</Link>
-        </button>
+        <Link
+          href="/admin/posts/new"
+          className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700"
+        >
+          新規作成
+        </Link>
       </div>
 
       <div className="">

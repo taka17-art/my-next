@@ -1,12 +1,13 @@
 import { prisma } from '@/app/_libs/prisma'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAdminAuth } from '@/app/_libs/requireAdminAuth'
 
 export type PostIndexResponse = {
   posts: {
     id: number
     title: string
     content: string
-    thumbnailUrl: string
+    thumbnailImageKey: string
     createdAt: Date
     updatedAt: Date
     postCategories: {
@@ -18,7 +19,10 @@ export type PostIndexResponse = {
   }[]
 }
 
-export const GET = async () => {
+export const GET = async (request: NextRequest) => {
+  const authError = await requireAdminAuth(request)
+  if (authError) return authError
+
   try {
     const posts = await prisma.post.findMany({
       include: {
@@ -40,8 +44,11 @@ export const GET = async () => {
 
     return NextResponse.json({ posts }, { status: 200 })
   } catch (error) {
-    if (error instanceof Error)
-      return NextResponse.json({ message: error.message }, { status: 400 })
+    if (error instanceof Error) {
+      return NextResponse.json({ message: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ message: '記事の取得に失敗しました' }, { status: 500 })
   }
 }
 
@@ -50,7 +57,7 @@ export type CreatePostRequestBody = {
   title: string
   content: string
   categories: { id: number }[]
-  thumbnailUrl: string
+  thumbnailImageKey: string
 }
 
 // 投稿作成APIのレスポンスの型
@@ -59,33 +66,42 @@ export type CreatePostResponse = {
 }
 
 // POSTという命名にすることで、POSTリクエストの時にこの関数が呼ばれる
-export const POST = async (request: Request) => {
+export const POST = async (request: NextRequest) => {
   try {
+    const authError = await requireAdminAuth(request)
+    if (authError) return authError
+
     // リクエストのbodyを取得
     const body: CreatePostRequestBody = await request.json()
 
-    // bodyの中からtitle, content, categories, thumbnailUrlを取り出す
-    const { title, content, categories, thumbnailUrl } = body
+    // bodyの中からtitle, content, categories, thumbnailImageKeyを取り出す
+    const { title, content, categories, thumbnailImageKey } = body
 
-    // 投稿をDBに生成
-    const data = await prisma.post.create({
-      data: {
-        title,
-        content,
-        thumbnailUrl,
-      },
-    })
-
-    // 記事とカテゴリーの中間テーブルのレコードをDBに生成
-    // 本来複数同時生成には、createManyというメソッドがあるが、sqliteではcreateManyが使えないので、for文1つずつ実施
-    for (const category of categories) {
-      await prisma.postCategory.create({
-        data: {
-          categoryId: category.id,
-          postId: data.id,
-        },
-      })
+    if (
+      typeof title !== 'string' ||
+      !title.trim() ||
+      typeof content !== 'string' ||
+      !content.trim() ||
+      typeof thumbnailImageKey !== 'string' ||
+      !Array.isArray(categories) ||
+      categories.some((category) => !Number.isInteger(category?.id))
+    ) {
+      return NextResponse.json({ message: '入力値が不正です' }, { status: 400 })
     }
+
+    const data = await prisma.$transaction(async (transaction) => {
+      const post = await transaction.post.create({
+        data: { title: title.trim(), content, thumbnailImageKey },
+      })
+
+      for (const category of categories) {
+        await transaction.postCategory.create({
+          data: { categoryId: category.id, postId: post.id },
+        })
+      }
+
+      return post
+    })
 
     // レスポンスを返す
     return NextResponse.json<CreatePostResponse>({
@@ -93,7 +109,9 @@ export const POST = async (request: Request) => {
     })
   } catch (error) {
     if (error instanceof Error) {
-      return NextResponse.json({ message: error.message }, { status: 400 })
+      return NextResponse.json({ message: error.message }, { status: 500 })
     }
+
+    return NextResponse.json({ message: '記事の作成に失敗しました' }, { status: 500 })
   }
 }

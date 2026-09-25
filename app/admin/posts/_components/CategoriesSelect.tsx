@@ -2,6 +2,7 @@
 
 import type { CategoriesIndexResponse } from '@/app/api/admin/categories/route'
 import type { Category } from '@/app/api/admin/posts/[id]/route'
+import { useSupabaseSession } from '@/app/_hooks/useSupabaseSession'
 import { useEffect, useState } from 'react'
 
 type Props = {
@@ -16,10 +17,17 @@ export const CategoriesSelect = ({
   disabled,
 }: Props) => {
   const [categories, setCategories] = useState<Category[]>([])
+  const { token } = useSupabaseSession()
 
   useEffect(() => {
+    if (!token) return
+
     const fetchCategories = async () => {
-      const response = await fetch('/api/admin/categories')
+      const response = await fetch('/api/admin/categories', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
       if (!response.ok) return
 
       const data: CategoriesIndexResponse = await response.json()
@@ -27,7 +35,7 @@ export const CategoriesSelect = ({
     }
 
     fetchCategories()
-  }, [])
+  }, [token])
 
   const toggleCategory = (category: Category) => {
     const isSelected = selectedCategories.some(

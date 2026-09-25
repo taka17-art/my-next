@@ -4,15 +4,15 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:../dev.db"
+  provider= "postgresql"
+  url      = env("DIRECT_URL")
 }
 
 model Post {
   id             Int            @id @default(autoincrement())
   title          String
   content        String
-  thumbnailUrl   String         @map("thumbnail_url")
+  thumbnailImageKey   String         @map("thumbnail_url")
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
   postCategories PostCategory[]

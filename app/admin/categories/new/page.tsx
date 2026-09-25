@@ -4,17 +4,21 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CategoryForm } from '../_components/CategoryForm'
 import { CreateCategoryRequestBody } from '@/app/api/admin/categories/route'
+import { useSupabaseSession } from '@/app/_hooks/useSupabaseSession'
 
 export default function Page() {
   const [name, setName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
+  const { token } = useSupabaseSession()
 
   const handleSubmit = async (e: React.FormEvent) => {
     // フォームのデフォルトの動作をキャンセルします。
     e.preventDefault()
 
     try {
+      if (!token) return
+
       setIsSubmitting(true)
 
       const body: CreateCategoryRequestBody = { name }
@@ -24,6 +28,7 @@ export default function Page() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       })

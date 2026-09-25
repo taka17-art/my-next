@@ -4,29 +4,63 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { PostForm } from '../_components/PostForm'
 import { Category, PostShowResponse, UpdatePostRequestBody } from '@/app/api/admin/posts/[id]/route'
+import { useSupabaseSession } from '@/app/_hooks/useSupabaseSession'
+import { supabase } from '@/app/_libs/supabase'
+import { v4 as uuidv4 } from 'uuid'
 
 export default function Page() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [thumbnailUrl, setThumbnailUrl] = useState('')
+  const [thumbnailImageKey, setThumbnailImageKey] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { id } = useParams()
   const router = useRouter()
+  const { token } = useSupabaseSession()
+
+  const handleImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): Promise<void> => {
+    if (!event.target.files || event.target.files.length === 0) return
+
+    const file = event.target.files[0]
+    const filePath = `private/${uuidv4()}`
+
+    setIsSubmitting(true)
+    const { data, error } = await supabase.storage
+      .from('post_thumbnail')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false })
+    setIsSubmitting(false)
+
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    setThumbnailImageKey(data.path)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     // フォームのデフォルトの動作をキャンセルします。
     e.preventDefault()
 
     try {
+      if (!token) return
+
       setIsSubmitting(true)
 
-      const body: UpdatePostRequestBody = { title, content, thumbnailUrl, categories }
+      const body: UpdatePostRequestBody = {
+        title,
+        content,
+        thumbnailImageKey,
+        categories,
+      }
 
       await fetch(`/api/admin/posts/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       })
@@ -45,9 +79,14 @@ export default function Page() {
     if (!confirm('記事を削除しますか？')) return
 
     try {
+      if (!token) return
+
       setIsSubmitting(true)
       await fetch(`/api/admin/posts/${id}`, {
         method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       })
 
       alert('記事を削除しました。')
@@ -62,17 +101,23 @@ export default function Page() {
   }
 
   useEffect(() => {
+    if (!token) return
+
     const fetcher = async () => {
-      const res = await fetch(`/api/admin/posts/${id}`)
+      const res = await fetch(`/api/admin/posts/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
       const { post }: { post: PostShowResponse["post"] } = await res.json()
       setTitle(post.title)
       setContent(post.content)
-      setThumbnailUrl(post.thumbnailUrl)
+      setThumbnailImageKey(post.thumbnailImageKey)
       setCategories(post.postCategories.map((pc) => pc.category))
     }
 
     fetcher()
-  }, [id])
+  }, [id, token])
 
   return (
     <div className="container mx-auto px-4">
@@ -86,8 +131,8 @@ export default function Page() {
         setTitle={setTitle}
         content={content}
         setContent={setContent}
-        thumbnailUrl={thumbnailUrl}
-        setThumbnailUrl={setThumbnailUrl}
+        thumbnailImageKey={thumbnailImageKey}
+        onImageChange={handleImageChange}
         categories={categories}
         setCategories={setCategories}
         onSubmit={handleSubmit}
