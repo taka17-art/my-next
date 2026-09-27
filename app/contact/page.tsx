@@ -1,134 +1,81 @@
 'use client'
 
-import { useState } from 'react'
 import { FormGroup } from '../_components/FormGroup'
 import { Label } from '../_components/Label'
 import { Input } from '../_components/Input'
 import { ErrorMessage } from '../_components/ErrorMessage'
 import { Textarea } from '../_components/Textarea'
 import { API_BASE_URL } from '../constants'
+import { useForm } from 'react-hook-form'
+import type { ContactForm } from '../_types/contactForm'
 
 export default function Page() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [message, setMessage] = useState('')
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ContactForm>({
+    defaultValues: {
+      name: '',
+      email: '',
+      message: '',
+    },
+  })
 
-  const [nameErrorMessage, setNameErrorMessage] = useState('')
-  const [emailErrorMessage, setEmailErrorMessage] = useState('')
-  const [messageErrorMessage, setMessageErrorMessage] = useState('')
-
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  /** バリデーション */
-  const valid = () => {
-    let isValid = true
-    let nameError = ''
-    let emailError = ''
-    let messageError = ''
-
-    if (!name) {
-      nameError = 'お名前は必須です。'
-      isValid = false
-    } else if (name.length > 30) {
-      nameError = 'お名前は30文字以内で入力してください。'
-      isValid = false
-    }
-
-    if (!email) {
-      emailError = 'メールアドレスは必須です。'
-      isValid = false
-    } else if (!email.match(/.+@.+\..+/)) {
-      emailError = 'メールアドレスの形式が正しくありません。'
-      isValid = false
-    }
-
-    if (!message) {
-      messageError = '本文は必須です。'
-      isValid = false
-    } else if (message.length > 500) {
-      messageError = '本文は500文字以内で入力してください。'
-      isValid = false
-    }
-
-    setNameErrorMessage(nameError)
-    setEmailErrorMessage(emailError)
-    setMessageErrorMessage(messageError)
-
-    return isValid
-  }
-
-  /** フォームの送信 */
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!valid()) return;
-
+  const onSubmit = async (data: ContactForm) => {
     try {
-      setIsSubmitting(true)
-
-      await fetch(`${API_BASE_URL}/contacts`, {
+      const res = await fetch(`${API_BASE_URL}/contacts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, message }),
-      })
-
+        body: JSON.stringify(data),
+      });
+      if(!res.ok) {
+        throw new Error('送信に失敗しました。');
+      }
       alert('送信しました。')
-
-      handleClear()
+      reset();
     } catch {
       alert('送信に失敗しました。')
-    } finally {
-      setIsSubmitting(false)
     }
-
-  }
-
-  /** フォームのクリア */
-  const handleClear = () => {
-    setName('')
-    setEmail('')
-    setMessage('')
   }
 
   return (
     <div>
       <div className="max-w-200 mx-auto py-10">
         <h1 className="text-xl font-bold mb-10">問合わせフォーム</h1>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <FormGroup>
             <Label text="お名前" htmlFor="name" />
             <Input
               type="text"
               id="name"
-              value={name}
-              onChange={(value) => setName(value)}
+              {...register('name', { required: 'お名前は必須です。' })}
               disabled={isSubmitting}
             />
-            <ErrorMessage message={nameErrorMessage} />
+            <ErrorMessage message={errors.name?.message} />
           </FormGroup>
           <FormGroup>
             <Label text="メールアドレス" htmlFor="email" />
             <Input
               type="email"
               id="email"
-              value={email}
-              onChange={(value) => setEmail(value)}
+              {...register('email', { required: 'メールアドレスは必須です。', pattern: { value: /^\S+@\S+$/i, message: '有効なメールアドレスを入力してください。' } })}
               disabled={isSubmitting}
             />
-            <ErrorMessage message={emailErrorMessage} />
+            <ErrorMessage message={errors.email?.message} />
           </FormGroup>
           <FormGroup>
             <Label text="本文" htmlFor="message" />
             <Textarea
               id="message"
-              value={message}
-              onChange={(value) => setMessage(value)}
+              {...register('message', { required: '本文は必須です。' })}
               disabled={isSubmitting}
               rows={8}
             />
-            <ErrorMessage message={messageErrorMessage} />
+            <ErrorMessage message={errors.message?.message} />
           </FormGroup>
           <div className="flex justify-center mt-10">
             <button
@@ -140,7 +87,7 @@ export default function Page() {
             </button>
             <button
               type="button"
-              onClick={handleClear}
+              onClick={() => reset()}
               className="bg-gray-200 font-bold py-2 px-4 rounded-lg"
               disabled={isSubmitting}
             >
