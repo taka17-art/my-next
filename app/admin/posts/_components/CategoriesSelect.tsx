@@ -2,8 +2,7 @@
 
 import type { CategoriesIndexResponse } from '@/app/api/admin/categories/route'
 import type { Category } from '@/app/api/admin/posts/[id]/route'
-import { useSupabaseSession } from '@/app/_hooks/useSupabaseSession'
-import useSWR from 'swr'
+import { useFetch } from '@/app/_hooks/useFetch'
 
 type Props = {
   selectedCategories: Category[]
@@ -16,20 +15,7 @@ export const CategoriesSelect = ({
   onChange,
   disabled,
 }: Props) => {
-  const { token } = useSupabaseSession()
-  const { data } = useSWR(
-    token ? ['/api/admin/categories', token] as const : null,
-    async ([url, accessToken]) => {
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-      if (!response.ok) throw new Error('カテゴリー一覧の取得に失敗しました。')
-
-      return response.json() as Promise<CategoriesIndexResponse>
-    },
-  )
+  const { data } = useFetch<CategoriesIndexResponse>('/api/admin/categories')
   const categories = data?.categories ?? []
 
   const toggleCategory = (category: Category) => {

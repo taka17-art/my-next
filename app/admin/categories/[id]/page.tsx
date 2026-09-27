@@ -2,28 +2,18 @@
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import useSWR from 'swr'
 import { CategoryForm } from '../_components/CategoryForm'
 import type { CategoryFormValues } from '../_components/CategoryForm'
 import type { CategoryShowResponse } from '@/app/api/admin/categories/[id]/route'
 import { useSupabaseSession } from '@/app/_hooks/useSupabaseSession'
+import { useFetch } from '@/app/_hooks/useFetch'
 
 export default function Page() {
   const [isDeleting, setIsDeleting] = useState(false)
   const { id } = useParams()
   const router = useRouter()
   const { token } = useSupabaseSession()
-  const { data } = useSWR(
-    token ? [`/api/admin/categories/${id}`, token] as const : null,
-    async ([url, accessToken]) => {
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })
-      if (!response.ok) throw new Error('カテゴリーの取得に失敗しました。')
-
-      return response.json() as Promise<CategoryShowResponse>
-    },
-  )
+  const { data } = useFetch<CategoryShowResponse>(`/api/admin/categories/${id}`)
 
   const handleSubmit = async (data: CategoryFormValues) => {
     try {

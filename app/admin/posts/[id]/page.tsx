@@ -6,26 +6,16 @@ import { PostForm } from '../_components/PostForm'
 import type { PostFormValues } from '../_components/PostForm'
 import type { PostShowResponse, UpdatePostRequestBody } from '@/app/api/admin/posts/[id]/route'
 import { useSupabaseSession } from '@/app/_hooks/useSupabaseSession'
+import { useFetch } from '@/app/_hooks/useFetch'
 import { supabase } from '@/app/_libs/supabase'
 import { v4 as uuidv4 } from 'uuid'
-import useSWR from 'swr'
 
 export default function Page() {
   const [isDeleting, setIsDeleting] = useState(false)
   const { id } = useParams()
   const router = useRouter()
   const { token } = useSupabaseSession()
-  const { data } = useSWR(
-    token ? [`/api/admin/posts/${id}`, token] as const : null,
-    async ([url, accessToken]) => {
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })
-      if (!response.ok) throw new Error('記事の取得に失敗しました。')
-
-      return response.json() as Promise<PostShowResponse>
-    },
-  )
+  const { data } = useFetch<PostShowResponse>(`/api/admin/posts/${id}`)
   const post = data?.post
 
   const handleImageUpload = async (file: File): Promise<string | null> => {
