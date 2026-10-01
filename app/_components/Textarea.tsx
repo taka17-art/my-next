@@ -1,15 +1,12 @@
 import React, { ComponentProps } from 'react'
 
-type Props = Omit<ComponentProps<'textarea'>, 'onChange'> & {
-  onChange: (value: string) => void
-}
+type Props = ComponentProps<'textarea'>
 
-export const Textarea: React.FC<Props> = ({ onChange, ...props }) => {
+export const Textarea: React.FC<Props> = ({ className, ...props }) => {
   return (
     <textarea
       {...props}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full border border-gray-300 rounded-lg p-4"
+      className={['w-full border border-gray-300 rounded-lg p-4', className].filter(Boolean).join(' ')}
     />
   )
 }

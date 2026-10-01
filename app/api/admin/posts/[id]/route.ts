@@ -1,5 +1,6 @@
 import { prisma } from '@/app/_libs/prisma'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdminAuth } from '@/app/_libs/requireAdminAuth'
 
 export type Category = {
   id: number
@@ -12,7 +13,7 @@ export type PostShowResponse = {
     id: number
     title: string
     content: string
-    thumbnailUrl: string
+    thumbnailImageKey: string
     createdAt: Date
     updatedAt: Date
     postCategories: {
@@ -22,15 +23,23 @@ export type PostShowResponse = {
 }
 
 export const GET = async (
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) => {
+  const authError = await requireAdminAuth(request)
+  if (authError) return authError
+
   const { id } = await params
+  const postId = Number(id)
+
+  if (!Number.isInteger(postId)) {
+    return NextResponse.json({ message: '記事IDが不正です' }, { status: 400 })
+  }
 
   try {
     const post = await prisma.post.findUnique({
       where: {
-        id: parseInt(id),
+        id: postId,
       },
       include: {
         postCategories: {
@@ -56,7 +65,7 @@ export const GET = async (
     return NextResponse.json<PostShowResponse>({ post }, { status: 200 })
   } catch (error) {
     if (error instanceof Error)
-      return NextResponse.json({ message: error.message }, { status: 400 })
+      return NextResponse.json({ message: error.message }, { status: 500 })
   }
 }
 
@@ -65,7 +74,7 @@ export type UpdatePostRequestBody = {
   title: string
   content: string
   categories: { id: number }[]
-  thumbnailUrl: string
+  thumbnailImageKey: string
 }
 
 // PUTという命名にすることで、PUTリクエストの時にこの関数が呼ばれる
@@ -73,64 +82,78 @@ export const PUT = async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }, // ここでリクエストパラメータを受け取る
 ) => {
+  const authError = await requireAdminAuth(request)
+  if (authError) return authError
+
   // paramsの中にidが入っているので、それを取り出す
   const { id } = await params
+  const postId = Number(id)
+
+  if (!Number.isInteger(postId)) {
+    return NextResponse.json({ message: '記事IDが不正です' }, { status: 400 })
+  }
 
   // リクエストのbodyを取得
-  const { title, content, categories, thumbnailUrl }: UpdatePostRequestBody = await request.json()
+  const { title, content, categories, thumbnailImageKey }: UpdatePostRequestBody = await request.json()
+
+  if (
+    typeof title !== 'string' ||
+    !title.trim() ||
+    typeof content !== 'string' ||
+    !content.trim() ||
+    typeof thumbnailImageKey !== 'string' ||
+    !Array.isArray(categories) ||
+    categories.some((category) => !Number.isInteger(category?.id))
+  ) {
+    return NextResponse.json({ message: '入力値が不正です' }, { status: 400 })
+  }
 
   try {
     // idを指定して、Postを更新
-    const post = await prisma.post.update({
-      where: {
-        id: parseInt(id),
-      },
-      data: {
-        title,
-        content,
-        thumbnailUrl,
-      },
-    })
-
-    // 一旦、記事とカテゴリーの中間テーブルのレコードを全て削除
-    await prisma.postCategory.deleteMany({
-      where: {
-        postId: parseInt(id),
-      },
-    })
-
-    // 記事とカテゴリーの中間テーブルのレコードをDBに生成
-    // 本来複数同時生成には、createManyというメソッドがあるが、sqliteではcreateManyが使えないので、for文1つずつ実施
-    for (const category of categories) {
-      await prisma.postCategory.create({
-        data: {
-          postId: post.id,
-          categoryId: category.id,
-        },
+    await prisma.$transaction(async (transaction) => {
+      await transaction.post.update({
+        where: { id: postId },
+        data: { title: title.trim(), content, thumbnailImageKey },
       })
-    }
+
+      await transaction.postCategory.deleteMany({ where: { postId } })
+
+      for (const category of categories) {
+        await transaction.postCategory.create({
+          data: { postId, categoryId: category.id },
+        })
+      }
+    })
 
     // レスポンスを返す
     return NextResponse.json({ message: 'OK' }, { status: 200 })
   } catch (error) {
     if (error instanceof Error)
-      return NextResponse.json({ message: error.message }, { status: 400 })
+      return NextResponse.json({ message: error.message }, { status: 500 })
   }
 }
 
 // DELETEという命名にすることで、DELETEリクエストの時にこの関数が呼ばれる
 export const DELETE = async (
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }, // ここでリクエストパラメータを受け取る
 ) => {
+  const authError = await requireAdminAuth(request)
+  if (authError) return authError
+
   // paramsの中にidが入っているので、それを取り出す
   const { id } = await params
+  const postId = Number(id)
+
+  if (!Number.isInteger(postId)) {
+    return NextResponse.json({ message: '記事IDが不正です' }, { status: 400 })
+  }
 
   try {
     // idを指定して、Postを削除
     await prisma.post.delete({
       where: {
-        id: parseInt(id),
+        id: postId,
       },
     })
 
@@ -138,6 +161,6 @@ export const DELETE = async (
     return NextResponse.json({ message: 'OK' }, { status: 200 })
   } catch (error) {
     if (error instanceof Error)
-      return NextResponse.json({ message: error.message }, { status: 400 })
+      return NextResponse.json({ message: error.message }, { status: 500 })
   }
 }

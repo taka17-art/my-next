@@ -1,35 +1,46 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PostForm } from '../_components/PostForm'
-import { Category } from '@/app/api/admin/posts/[id]/route'
-import { CreatePostRequestBody } from '@/app/api/admin/posts/route'
+import type { PostFormValues } from '../_components/PostForm'
+import type { CreatePostRequestBody } from '@/app/api/admin/posts/route'
+import { useSupabaseSession } from '@/app/_hooks/useSupabaseSession'
+import { supabase } from '@/app/_libs/supabase'
+import { v4 as uuidv4 } from 'uuid'
 
 export default function Page() {
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [thumbnailUrl, setThumbnailUrl] = useState(
-    'https://placehold.jp/800x400.png',
-  ) // 画像URLは、一旦このURL固定でお願いします。後ほど画像アップロード処理を実装します。
-  const [categories, setCategories] = useState<Category[]>([])
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
+  const { token } = useSupabaseSession()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    // フォームのデフォルトの動作をキャンセルします。
-    e.preventDefault()
+  const handleImageUpload = async (file: File): Promise<string | null> => {
+    const filePath = `private/${uuidv4()}`
+    const { data, error } = await supabase.storage
+      .from('post_thumbnail')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false })
+    if (error) {
+      alert(error.message)
+      return null
+    }
 
+    return data.path
+  }
+
+  const handleSubmit = async (data: PostFormValues) => {
     try {
-      setIsSubmitting(true)
-
-      const body: CreatePostRequestBody = { title, content, thumbnailUrl, categories }
+      if (!token) return
+      const body: CreatePostRequestBody = {
+        title: data.title,
+        content: data.content,
+        thumbnailImageKey: data.thumbnailImageKey,
+        categories: data.categories.map(({ id }) => ({ id })),
+      }
 
       // 記事を作成します。
       const res = await fetch('/api/admin/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       })
@@ -44,10 +55,7 @@ export default function Page() {
     } catch (error) {
       console.error('記事の作成に失敗しました:', error)
       alert('記事の作成に失敗しました。')
-    } finally {
-      setIsSubmitting(false)
     }
-
   }
 
   return (
@@ -58,16 +66,8 @@ export default function Page() {
 
       <PostForm
         mode="new"
-        title={title}
-        setTitle={setTitle}
-        content={content}
-        setContent={setContent}
-        thumbnailUrl={thumbnailUrl}
-        setThumbnailUrl={setThumbnailUrl}
-        categories={categories}
-        setCategories={setCategories}
+        onImageUpload={handleImageUpload}
         onSubmit={handleSubmit}
-        disabled={isSubmitting}
       />
     </div>
   )

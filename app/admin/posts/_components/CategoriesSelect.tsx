@@ -2,39 +2,28 @@
 
 import type { CategoriesIndexResponse } from '@/app/api/admin/categories/route'
 import type { Category } from '@/app/api/admin/posts/[id]/route'
-import { useEffect, useState } from 'react'
+import { useFetch } from '@/app/_hooks/useFetch'
 
 type Props = {
   selectedCategories: Category[]
-  setSelectedCategories: (categories: Category[]) => void
+  onChange: (categories: Category[]) => void
   disabled: boolean
 }
 
 export const CategoriesSelect = ({
   selectedCategories,
-  setSelectedCategories,
+  onChange,
   disabled,
 }: Props) => {
-  const [categories, setCategories] = useState<Category[]>([])
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      const response = await fetch('/api/admin/categories')
-      if (!response.ok) return
-
-      const data: CategoriesIndexResponse = await response.json()
-      setCategories(data.categories)
-    }
-
-    fetchCategories()
-  }, [])
+  const { data } = useFetch<CategoriesIndexResponse>('/api/admin/categories')
+  const categories = data?.categories ?? []
 
   const toggleCategory = (category: Category) => {
     const isSelected = selectedCategories.some(
       (selectedCategory) => selectedCategory.id === category.id,
     )
 
-    setSelectedCategories(
+    onChange(
       isSelected
         ? selectedCategories.filter(
             (selectedCategory) => selectedCategory.id !== category.id,

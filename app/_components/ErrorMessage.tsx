@@ -1,7 +1,7 @@
 import React from 'react'
 
 interface Props {
-  message: string
+  message?: string
 }
 
 export const ErrorMessage: React.FC<Props> = ({ message }) => {

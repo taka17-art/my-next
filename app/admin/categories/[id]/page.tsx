@@ -1,52 +1,54 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { CategoryForm } from '../_components/CategoryForm'
-import { CategoryShowResponse, UpdateCategoryRequestBody } from '@/app/api/admin/categories/[id]/route'
+import type { CategoryFormValues } from '../_components/CategoryForm'
+import type { CategoryShowResponse } from '@/app/api/admin/categories/[id]/route'
+import { useSupabaseSession } from '@/app/_hooks/useSupabaseSession'
+import { useFetch } from '@/app/_hooks/useFetch'
 
 export default function Page() {
-  const [name, setName] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const { id } = useParams()
   const router = useRouter()
+  const { token } = useSupabaseSession()
+  const { data } = useFetch<CategoryShowResponse>(`/api/admin/categories/${id}`)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    // フォームのデフォルトの動作をキャンセルします。
-    e.preventDefault()
-
+  const handleSubmit = async (data: CategoryFormValues) => {
     try {
-      setIsSubmitting(true)
-
-      const body: UpdateCategoryRequestBody = { name }
+      if (!token) return
 
       // カテゴリーを更新します。
       await fetch(`/api/admin/categories/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(data),
       })
 
       alert('カテゴリーを更新しました。')
     } catch (error) {
       console.error('カテゴリーの更新に失敗しました:', error)
       alert('カテゴリーの更新に失敗しました。')
-    } finally {
-      setIsSubmitting(false)
     }
-
   }
 
-  const handleDeletePost = async () => {
+  const handleDeleteCategory = async () => {
     if (!confirm('カテゴリーを削除しますか？')) return
 
     try {
-      setIsSubmitting(true)
+      if (!token) return
+
+      setIsDeleting(true)
 
       await fetch(`/api/admin/categories/${id}`, {
         method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       })
 
       alert('カテゴリーを削除しました。')
@@ -56,20 +58,10 @@ export default function Page() {
       console.error('カテゴリーの削除に失敗しました:', error)
       alert('カテゴリーの削除に失敗しました。')
     } finally {
-      setIsSubmitting(false)
+      setIsDeleting(false)
     }
 
   }
-
-  useEffect(() => {
-    const fetcher = async () => {
-      const res = await fetch(`/api/admin/categories/${id}`)
-      const { category }: CategoryShowResponse = await res.json()
-      setName(category.name)
-    }
-
-    fetcher()
-  }, [id])
 
   return (
     <div className="container mx-auto px-4">
@@ -77,14 +69,15 @@ export default function Page() {
         <h1 className="text-2xl font-bold mb-4">カテゴリー編集</h1>
       </div>
 
-      <CategoryForm
-        mode="edit"
-        name={name}
-        setName={setName}
-        onSubmit={handleSubmit}
-        onDelete={handleDeletePost}
-        disabled={isSubmitting}
-      />
+      {data && (
+        <CategoryForm
+          mode="edit"
+          initialName={data.category.name}
+          onSubmit={handleSubmit}
+          onDelete={handleDeleteCategory}
+          disabled={isDeleting}
+        />
+      )}
     </div>
   )
 }

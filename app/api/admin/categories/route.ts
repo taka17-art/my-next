@@ -1,5 +1,7 @@
 
 import { prisma } from '@/app/_libs/prisma'
+import { requireAdminAuth } from '@/app/_libs/requireAdminAuth'
+import { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
 // カテゴリー一覧APIのレスポンスの型
@@ -12,7 +14,10 @@ export type CategoriesIndexResponse = {
   }[]
 }
 
-export const GET = async () => {
+export const GET = async (request: NextRequest) => {
+  const authError = await requireAdminAuth(request)
+  if (authError) return authError
+
   try {
     // カテゴリーの一覧をDBから取得
     const categories = await prisma.category.findMany({
@@ -39,18 +44,25 @@ export type CreateCategoryResponse = {
   id: number
 }
 
-export const POST = async (request: Request) => {
+export const POST = async (request: NextRequest) => {
   try {
+    const authError = await requireAdminAuth(request)
+    if (authError) return authError
+
     // リクエストのbodyを取得
     const body = await request.json()
 
     // bodyの中からnameを取り出す
     const { name }: CreateCategoryRequestBody = body
 
+    if (typeof name !== 'string' || !name.trim()) {
+      return NextResponse.json({ message: 'カテゴリー名が不正です' }, { status: 400 })
+    }
+
     // カテゴリーをDBに生成
     const data = await prisma.category.create({
       data: {
-        name,
+        name: name.trim(),
       },
     })
 
@@ -60,7 +72,7 @@ export const POST = async (request: Request) => {
     })
   } catch (error) {
     if (error instanceof Error) {
-      return NextResponse.json({ message: error.message }, { status: 400 })
+      return NextResponse.json({ message: error.message }, { status: 500 })
     }
   }
 }
